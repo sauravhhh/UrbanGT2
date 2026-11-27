@@ -19,6 +19,9 @@
   #speed span { font-size:12px; letter-spacing:2px; opacity:.85; display:block; }
   #info { left:14px; top:12px; font-weight:800; font-size:15px; line-height:1.55; letter-spacing:1px; }
   #info .pos { font-size:26px; font-style:italic; }
+  #coinRow { display:inline-block; transition:transform .12s; transform-origin:left center; }
+  .coinDot { display:inline-block; width:14px; height:14px; border-radius:50%; background:radial-gradient(circle at 35% 35%, #ffec8b, #ffd700 55%, #b8860b); border:1px solid #8a6508; vertical-align:-2px; }
+  #coinCount { color:#ffd700; }
   #nitroWrap { left:50%; transform:translateX(-50%); top:64px; width:min(420px,58vw); }
   #nitroLabel { text-align:center; font-size:11px; letter-spacing:3px; font-weight:800; margin-bottom:4px; color:#7df9ff; }
   #nitroBar { height:12px; background:rgba(255,255,255,.18); border-radius:6px; overflow:hidden; border:1px solid rgba(255,255,255,.35); }
@@ -57,7 +60,7 @@
 <div id="wrap">
   <canvas id="c"></canvas>
 
-  <div class="hud" id="info"><span class="pos" id="pos">6th</span><br><span id="lap">LAP 1/3</span><br><span id="time">0:00.0</span></div>
+  <div class="hud" id="info"><span class="pos" id="pos">6th</span><br><span id="lap">LAP 1/3</span><br><span id="time">0:00.0</span><br><span id="coinRow"><span class="coinDot"></span> <span id="coinCount">0</span></span></div>
   <div class="hud" id="speed"><b id="speedVal">0</b><span>KM/H</span></div>
   <div class="hud" id="nitroWrap"><div id="nitroLabel">NITRO</div><div id="nitroBar"><div id="nitroFill"></div></div></div>
   <div class="hud" id="msg"></div>
@@ -163,6 +166,7 @@ var position = 0, playerX = 0, speed = 0;
 var playerZ = cameraHeight * cameraDepth;
 var lap = 1, raceTime = 0, lapStart = 0, lapTimes = [], bestLap = Infinity;
 var nitro = 100, nitroActive = false;
+var coins = 0, coinPopT = 0;
 var opponents = [];
 var state = 'title';           // title | countdown | race | finish | paused
 var prevState = 'race';
@@ -172,6 +176,8 @@ var steerVisual = 0, offroadShake = 0;
 var flashMsg = '', flashT = 0;
 var bestTime = null;
 try { bestTime = localStorage.getItem('urbangt2-best'); } catch (e) {}
+var bestCoins = 0;
+try { bestCoins = parseInt(localStorage.getItem('urbangt2-coins') || '0', 10) || 0; } catch (e) {}
 var soundOn = true, audioCtx = null, engineOsc1 = null, engineOsc2 = null, engineGain = null;
 
 /* ---------- track building ---------- */
@@ -217,6 +223,12 @@ function buildTrack() {
     }
     if (i % 6 === 0) s.sprites.push({ type: 'lamp', offset: (i % 12 === 0 ? -1.35 : 1.35) });
     if (i % 37 === 18) s.sprites.push({ type: 'nitro', offset: (seeded(i + 21) - 0.5) * 1.2, taken: false });
+    if (i % 19 === 8) s.sprites.push({ type: 'coin', offset: (seeded(i + 31) - 0.5) * 1.3, taken: false, seed: i });
+    if (i % 53 === 26) {
+      s.sprites.push({ type: 'coin', offset: -0.55, taken: false, seed: i + 1 });
+      s.sprites.push({ type: 'coin', offset: 0, taken: false, seed: i + 2 });
+      s.sprites.push({ type: 'coin', offset: 0.55, taken: false, seed: i + 3 });
+    }
   }
 }
 function findSegment(z) { return segments[Math.floor(z / segmentLength) % segments.length]; }
@@ -328,10 +340,13 @@ function toggleSound() {
 function startRace() {
   position = 0; playerX = 0; speed = 0; lap = 1; raceTime = 0; lapStart = 0;
   lapTimes = []; bestLap = Infinity; nitro = 100; nitroActive = false;
+  coins = 0; coinPopT = 0;
   resetOpponents();
   for (var i = 0; i < segments.length; i++)
-    for (var j = 0; j < segments[i].sprites.length; j++)
-      if (segments[i].sprites[j].type === 'nitro') segments[i].sprites[j].taken = false;
+    for (var j = 0; j < segments[i].sprites.length; j++) {
+      var sp2 = segments[i].sprites[j];
+      if (sp2.type === 'nitro' || sp2.type === 'coin') sp2.taken = false;
+    }
   document.getElementById('startScreen').style.display = 'none';
   document.getElementById('finishScreen').style.display = 'none';
   document.getElementById('pauseBtn').textContent = 'II Pause';
@@ -347,10 +362,16 @@ function finishRace() {
   var pos = getPosition();
   document.getElementById('finishTitle').innerHTML = pos === 1 ? '<span class="b">YOU WIN!</span>' : '<span class="a">FINISH!</span>';
   var bestLapStr = bestLap === Infinity ? '—' : fmtTime(bestLap);
+  var newBestCoins = coins > bestCoins;
+  if (newBestCoins) {
+    bestCoins = coins;
+    try { localStorage.setItem('urbangt2-coins', String(bestCoins)); } catch (e) {}
+  }
   document.getElementById('finishStats').innerHTML =
     'Position: <b>' + ordinal(pos) + ' / 6</b><br>' +
     'Total time: <b>' + fmtTime(total) + '</b><br>' +
     'Best lap: <b>' + bestLapStr + '</b><br>' +
+    'Coins: <b>' + coins + '</b>' + (newBestCoins ? ' <b>NEW BEST!</b>' : '') + '<br>' +
     'Best total: <b>' + fmtTime(parseFloat(bestTime)) + '</b>';
   document.getElementById('finishScreen').style.display = 'flex';
   beep(880, 0.4);
@@ -431,15 +452,18 @@ function update(dt) {
       beep(120, 0.2);
     }
   }
-  // nitro canisters
+  // nitro canisters + gold coins
   var seg = findSegment(carZ);
   for (var j = 0; j < seg.sprites.length; j++) {
     var sp = seg.sprites[j];
     if (sp.type === 'nitro' && !sp.taken && Math.abs(sp.offset - playerX) < 0.45) {
       sp.taken = true; nitro = Math.min(100, nitro + 30);
       flashMsg = '+NITRO'; flashT = 1.0; beep(990, 0.12);
+    } else if (sp.type === 'coin' && !sp.taken && Math.abs(sp.offset - playerX) < 0.4) {
+      sp.taken = true; coins++; coinPopT = 0.18; beep(1320, 0.1);
     }
   }
+  if (coinPopT > 0) coinPopT -= dt;
   if (flashT > 0) flashT -= dt;
 }
 
@@ -543,6 +567,22 @@ function drawNitroCan(x, y, w) {
   ctx.lineTo(x + r * 0.3, y - r * 1.1); ctx.lineTo(x + r * 0.02, y - r * 1.1);
   ctx.closePath(); ctx.fill();
 }
+function drawCoin(x, y, w, seed) {
+  var r = w * 0.30;
+  var spin = Math.abs(Math.cos(raceTime * 3.5 + seed));
+  var rx = Math.max(r * 0.25, r * spin);
+  var bob = Math.sin(raceTime * 3 + seed) * r * 0.18;
+  var cy = y - r * 1.4 + bob;
+  var g = ctx.createRadialGradient(x, cy, 1, x, cy, r * 2.4);
+  g.addColorStop(0, 'rgba(255,215,0,.55)'); g.addColorStop(1, 'rgba(255,215,0,0)');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, cy, r * 2.4, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#b8860b';
+  ctx.beginPath(); ctx.ellipse(x, cy, rx, r, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#ffd700';
+  ctx.beginPath(); ctx.ellipse(x, cy, rx * 0.85, r * 0.85, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#ffec8b';
+  ctx.beginPath(); ctx.ellipse(x, cy, rx * 0.5, r * 0.5, 0, 0, Math.PI * 2); ctx.fill();
+}
 function drawCar(x, y, w, h, color) {
   var bodyTop = y - h * 0.60, cabinTop = y - h * 0.92;
   ctx.save();
@@ -614,6 +654,7 @@ function render() {
       if (sp.type === 'building') drawBuilding(sx, sy, sw * 0.85, sw * sp.h * 0.55, sp.seed);
       else if (sp.type === 'lamp') drawLamp(sx, sy, sw * 0.12);
       else if (sp.type === 'nitro' && !sp.taken) drawNitroCan(sx, sy, sw * 0.5);
+      else if (sp.type === 'coin' && !sp.taken) drawCoin(sx, sy, sw * 0.5, sp.seed);
     }
     // opponent cars in this segment
     for (var k = 0; k < opponents.length; k++) {
@@ -668,6 +709,8 @@ function updateHUD() {
   var nf = document.getElementById('nitroFill');
   nf.style.width = Math.round(nitro) + '%';
   if (nitroActive) nf.classList.add('hot'); else nf.classList.remove('hot');
+  document.getElementById('coinCount').textContent = coins;
+  document.getElementById('coinRow').style.transform = coinPopT > 0 ? 'scale(1.3)' : 'scale(1)';
   var msg = '', sub = '';
   if (state === 'countdown') { msg = countdownShown; sub = 'GET READY'; }
   else if (state === 'paused') { msg = 'PAUSED'; sub = 'Tap Resume or press P'; }
@@ -701,7 +744,10 @@ resize();
 makeSkyTile();
 buildTrack();
 resetOpponents();
-if (bestTime) document.getElementById('bestLine').innerHTML = 'Best total: <b>' + fmtTime(parseFloat(bestTime)) + '</b>';
+var bl = '';
+if (bestTime) bl += 'Best total: <b>' + fmtTime(parseFloat(bestTime)) + '</b>';
+if (bestCoins > 0) bl += (bl ? ' &nbsp;·&nbsp; ' : '') + 'Best coins: <b>' + bestCoins + '</b>';
+if (bl) document.getElementById('bestLine').innerHTML = bl;
 if (navigator.serviceWorker) navigator.serviceWorker.register('sw.js').catch(function () {});
 requestAnimationFrame(frame);
 </script>
