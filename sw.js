@@ -1,5 +1,6 @@
-const CACHE = 'urbangt2-v4';
-const ASSETS = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
+const CACHE = 'urbangt2-v5';
+const ASSETS = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png',
+  './sounds/engine.ogg', './sounds/coin.ogg', './sounds/crash.ogg', './sounds/nitro.ogg', './sounds/start.ogg'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting()));
 });
