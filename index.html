@@ -69,6 +69,7 @@
   <div id="topBtns">
     <button class="iconBtn" id="pauseBtn">II Pause</button>
     <button class="iconBtn" id="soundBtn">Sound: On</button>
+    <button class="iconBtn" id="tiltBtn">Tilt: Off</button>
   </div>
 
   <div id="touch">
@@ -92,6 +93,7 @@
     <div class="keys">
       <b>Steer:</b> &larr; &rarr; &nbsp; <b>Gas:</b> &uarr; &nbsp; <b>Brake:</b> &darr; &nbsp; <b>Nitro:</b> Shift / Space<br>
       On phone use the on-screen buttons. <b>P</b> pause &nbsp; <b>M</b> mute<br>
+      <span id="tiltHint"></span>
       <span id="bestLine"></span>
     </div>
   </div>
@@ -282,6 +284,62 @@ function updateAudio() {
   engineOsc1.frequency.value = f; engineOsc2.frequency.value = f * 1.5;
 }
 
+/* ---------- tilt steering (rotate the phone to steer) ---------- */
+var tiltEnabled = false, tiltSteer = 0;
+var tiltCalibratePending = true, tiltNeutral = 0, motionMode = null;
+function updateTiltBtn() {
+  document.getElementById('tiltBtn').textContent = tiltEnabled ? 'Tilt: On' : 'Tilt: Off';
+}
+function setTilt(on) {
+  tiltEnabled = on;
+  if (on) tiltCalibratePending = true;
+  else tiltSteer = 0;
+  updateTiltBtn();
+}
+function requestTiltPermission() {
+  try {
+    if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+      DeviceMotionEvent.requestPermission().then(function (r) { if (r === 'granted') setTilt(true); }).catch(function () {});
+      return;
+    }
+  } catch (e) {}
+  try {
+    if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+      DeviceOrientationEvent.requestPermission().then(function (r) { if (r === 'granted') setTilt(true); }).catch(function () {});
+      return;
+    }
+  } catch (e) {}
+  setTilt(true);
+}
+document.getElementById('tiltBtn').addEventListener('click', function () {
+  if (tiltEnabled) setTilt(false);
+  else requestTiltPermission();
+});
+function tiltFromDegrees(d) {
+  var s = 0;
+  if (Math.abs(d) > 3) s = clamp((Math.abs(d) - 3) / 20, 0, 1) * (d > 0 ? 1 : -1);
+  return s;
+}
+window.addEventListener('devicemotion', function (e) {
+  var a = e.accelerationIncludingGravity;
+  if (!a || a.x == null || a.y == null) return;
+  motionMode = 'motion';
+  if (!tiltEnabled) return;
+  var roll = Math.atan2(-a.x, a.y) * 180 / Math.PI;
+  if (tiltCalibratePending) { tiltNeutral = roll; tiltCalibratePending = false; return; }
+  var d = roll - tiltNeutral;
+  if (d > 180) d -= 360;
+  if (d < -180) d += 360;
+  tiltSteer = tiltFromDegrees(d);
+});
+window.addEventListener('deviceorientation', function (e) {
+  if (motionMode === 'motion' || !tiltEnabled) return;
+  var val = e.gamma;
+  if (val == null) return;
+  if (tiltCalibratePending) { tiltNeutral = val; tiltCalibratePending = false; return; }
+  tiltSteer = tiltFromDegrees(val - tiltNeutral);
+});
+
 /* ---------- input ---------- */
 var keys = { left: false, right: false, gas: false, brake: false, nitro: false };
 var touch = { left: false, right: false, gas: false, brake: false, nitro: false };
@@ -341,6 +399,7 @@ function startRace() {
   position = 0; playerX = 0; speed = 0; lap = 1; raceTime = 0; lapStart = 0;
   lapTimes = []; bestLap = Infinity; nitro = 100; nitroActive = false;
   coins = 0; coinPopT = 0;
+  if (tiltEnabled) tiltCalibratePending = true;
   resetOpponents();
   for (var i = 0; i < segments.length; i++)
     for (var j = 0; j < segments[i].sprites.length; j++) {
@@ -402,7 +461,8 @@ function update(dt) {
   var speedPercent = speed / maxSpeed;
   var dx = dt * 2 * speedPercent;
   var startPosition = position;
-  var steer = ((keys.left || touch.left) ? -1 : 0) + ((keys.right || touch.right) ? 1 : 0);
+  var btnSteer = ((keys.left || touch.left) ? -1 : 0) + ((keys.right || touch.right) ? 1 : 0);
+  var steer = clamp(btnSteer + tiltSteer, -1, 1);
   steerVisual += ((steer) - steerVisual) * Math.min(1, dt * 8);
   playerX += dx * steer * 1.0;
   playerX -= dx * speedPercent * playerSegment.curve * centrifugal;
@@ -744,6 +804,12 @@ resize();
 makeSkyTile();
 buildTrack();
 resetOpponents();
+if ('ontouchstart' in window && (typeof window.DeviceMotionEvent !== 'undefined' || typeof window.DeviceOrientationEvent !== 'undefined')) {
+  tiltEnabled = true;
+  tiltCalibratePending = true;
+  document.getElementById('tiltHint').innerHTML = '<b>Tilt:</b> rotate your phone to steer &nbsp;·&nbsp; ';
+}
+updateTiltBtn();
 var bl = '';
 if (bestTime) bl += 'Best total: <b>' + fmtTime(parseFloat(bestTime)) + '</b>';
 if (bestCoins > 0) bl += (bl ? ' &nbsp;·&nbsp; ' : '') + 'Best coins: <b>' + bestCoins + '</b>';
