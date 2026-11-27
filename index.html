@@ -14,18 +14,18 @@
   #wrap { position:fixed; inset:0; }
   canvas { display:block; width:100%; height:100%; }
   .hud { position:absolute; color:#fff; text-shadow:0 2px 6px rgba(0,0,0,.75); pointer-events:none; z-index:5; }
-  #speed { right:14px; top:12px; text-align:right; }
-  #speed b { font-size:52px; font-weight:900; font-style:italic; line-height:1; }
+  #speed { right:12px; top:52px; text-align:right; }
+  #speed b { font-size:44px; font-weight:900; font-style:italic; line-height:1; }
   #speed span { font-size:12px; letter-spacing:2px; opacity:.85; display:block; }
-  #info { left:14px; top:12px; font-weight:800; font-size:15px; line-height:1.55; letter-spacing:1px; }
-  #info .pos { font-size:26px; font-style:italic; }
+  #info { left:12px; top:52px; font-weight:800; font-size:13px; line-height:1.55; letter-spacing:1px; }
+  #info .pos { font-size:22px; font-style:italic; }
   #coinRow { display:inline-block; transition:transform .12s; transform-origin:left center; }
   .coinDot { display:inline-block; width:14px; height:14px; border-radius:50%; background:radial-gradient(circle at 35% 35%, #ffec8b, #ffd700 55%, #b8860b); border:1px solid #8a6508; vertical-align:-2px; }
   #coinCount { color:#ffd700; }
-  #nitroWrap { left:50%; transform:translateX(-50%); top:64px; width:min(420px,58vw); }
-  #nitroLabel { text-align:center; font-size:11px; letter-spacing:3px; font-weight:800; margin-bottom:4px; color:#7df9ff; }
-  #nitroBar { height:12px; background:rgba(255,255,255,.18); border-radius:6px; overflow:hidden; border:1px solid rgba(255,255,255,.35); }
-  #nitroFill { height:100%; width:100%; background:linear-gradient(90deg,#00c6ff,#0072ff,#7b2fff); border-radius:6px; transition:width .08s linear; }
+  #nitroWrap { left:0; top:0; transform:none; width:100%; }
+  #nitroLabel { display:none; }
+  #nitroBar { height:7px; background:rgba(255,255,255,.15); border:none; border-radius:0; overflow:hidden; }
+  #nitroFill { height:100%; width:100%; background:linear-gradient(90deg,#00c6ff,#0072ff,#7b2fff); border-radius:0; transition:width .08s linear; }
   #nitroFill.hot { background:linear-gradient(90deg,#ff9a00,#ff2d55,#ff00a8); }
   #msg { left:0; top:32%; width:100%; text-align:center; font-size:72px; font-weight:900; font-style:italic; letter-spacing:2px; }
   #submsg { left:0; top:calc(32% + 70px); width:100%; text-align:center; font-size:16px; font-weight:700; letter-spacing:2px; }
@@ -42,18 +42,18 @@
   .keys b { color:#ffb703; }
   #finishStats { margin-top:14px; font-size:17px; line-height:1.9; font-weight:700; }
   #finishStats b { color:#ffb703; }
-  #topBtns { position:absolute; top:12px; left:50%; transform:translateX(-50%); z-index:9; display:flex; gap:8px; }
-  .iconBtn { pointer-events:auto; cursor:pointer; background:rgba(0,0,0,.45); color:#fff; border:1px solid rgba(255,255,255,.4); border-radius:8px; padding:6px 10px; font-size:13px; font-weight:700; }
+  #topBtns { position:absolute; top:14px; left:50%; transform:translateX(-50%); z-index:9; display:flex; gap:6px; }
+  .iconBtn { pointer-events:auto; cursor:pointer; background:rgba(0,0,0,.45); color:#fff; border:1px solid rgba(255,255,255,.4); border-radius:8px; padding:5px 8px; font-size:12px; font-weight:700; }
+  .iconBtn.off { opacity:.45; }
   #touch { position:absolute; inset:0; z-index:8; pointer-events:none; display:none; }
   #touch.on { display:block; }
   .tbtn { position:absolute; pointer-events:auto; display:flex; align-items:center; justify-content:center; border-radius:50%; background:rgba(255,255,255,.14); border:2px solid rgba(255,255,255,.45); color:#fff; font-weight:900; user-select:none; touch-action:none; }
   .tbtn:active { background:rgba(255,255,255,.35); }
   #tLeft { left:16px; bottom:92px; width:64px; height:64px; font-size:26px; }
   #tRight { left:96px; bottom:92px; width:64px; height:64px; font-size:26px; }
-  #tGas { right:16px; bottom:76px; width:84px; height:84px; font-size:15px; background:rgba(0,200,83,.35); border-color:rgba(0,230,118,.7); }
-  #tBrake { right:112px; bottom:76px; width:64px; height:64px; font-size:13px; background:rgba(255,45,85,.3); border-color:rgba(255,45,85,.7); }
+  #tBrake { right:16px; bottom:76px; width:84px; height:84px; font-size:15px; background:rgba(255,45,85,.3); border-color:rgba(255,45,85,.7); }
   #tNitro { right:24px; bottom:174px; width:64px; height:64px; font-size:12px; background:rgba(0,150,255,.3); border-color:rgba(0,180,255,.7); }
-  @media (max-width:600px){ #speed b{font-size:40px;} #msg{font-size:52px;} }
+  @media (max-width:600px){ #speed b{font-size:34px;} #msg{font-size:52px;} }
 </style>
 </head>
 <body>
@@ -67,16 +67,15 @@
   <div class="hud" id="submsg"></div>
 
   <div id="topBtns">
-    <button class="iconBtn" id="pauseBtn">II Pause</button>
-    <button class="iconBtn" id="soundBtn">Sound: On</button>
-    <button class="iconBtn" id="tiltBtn">Tilt: Off</button>
+    <button class="iconBtn" id="pauseBtn">II</button>
+    <button class="iconBtn" id="soundBtn">&#9834;</button>
+    <button class="iconBtn" id="tiltBtn">TILT</button>
   </div>
 
   <div id="touch">
     <div class="tbtn" id="tLeft">&#9664;</div>
     <div class="tbtn" id="tRight">&#9654;</div>
     <div class="tbtn" id="tBrake">BRAKE</div>
-    <div class="tbtn" id="tGas">GAS</div>
     <div class="tbtn" id="tNitro">NITRO</div>
   </div>
 
@@ -92,7 +91,7 @@
     <button class="btn" id="startBtn">START RACE</button>
     <div class="keys">
       <b>Steer:</b> &larr; &rarr; &nbsp; <b>Gas:</b> &uarr; &nbsp; <b>Brake:</b> &darr; &nbsp; <b>Nitro:</b> Shift / Space<br>
-      On phone use the on-screen buttons. <b>P</b> pause &nbsp; <b>M</b> mute<br>
+      On phone the car auto-accelerates — tilt to steer, BRAKE and NITRO when you need them. <b>P</b> pause &nbsp; <b>M</b> mute<br>
       <span id="tiltHint"></span>
       <span id="bestLine"></span>
     </div>
@@ -288,7 +287,9 @@ function updateAudio() {
 var tiltEnabled = false, tiltSteer = 0;
 var tiltCalibratePending = true, tiltNeutral = 0, motionMode = null;
 function updateTiltBtn() {
-  document.getElementById('tiltBtn').textContent = tiltEnabled ? 'Tilt: On' : 'Tilt: Off';
+  var b = document.getElementById('tiltBtn');
+  b.textContent = 'TILT';
+  if (tiltEnabled) b.classList.remove('off'); else b.classList.add('off');
 }
 function setTilt(on) {
   tiltEnabled = on;
@@ -342,7 +343,8 @@ window.addEventListener('deviceorientation', function (e) {
 
 /* ---------- input ---------- */
 var keys = { left: false, right: false, gas: false, brake: false, nitro: false };
-var touch = { left: false, right: false, gas: false, brake: false, nitro: false };
+var touch = { left: false, right: false, brake: false, nitro: false };
+var autoGas = false; // on touch devices the car accelerates by itself
 window.addEventListener('keydown', function (e) {
   if (e.key === 'ArrowLeft') keys.left = true;
   else if (e.key === 'ArrowRight') keys.right = true;
@@ -371,7 +373,7 @@ function bindTouch(id, prop) {
   el.addEventListener('pointerleave', off);
 }
 bindTouch('tLeft', 'left'); bindTouch('tRight', 'right');
-bindTouch('tGas', 'gas'); bindTouch('tBrake', 'brake'); bindTouch('tNitro', 'nitro');
+bindTouch('tBrake', 'brake'); bindTouch('tNitro', 'nitro');
 if ('ontouchstart' in window) document.getElementById('touch').classList.add('on');
 
 document.getElementById('colorPick').addEventListener('click', function (e) {
@@ -386,12 +388,13 @@ document.getElementById('againBtn').addEventListener('click', function () { star
 document.getElementById('pauseBtn').addEventListener('click', togglePause);
 document.getElementById('soundBtn').addEventListener('click', toggleSound);
 function togglePause() {
-  if (state === 'race' || state === 'countdown') { prevState = state; state = 'paused'; document.getElementById('pauseBtn').textContent = '▶ Resume'; }
-  else if (state === 'paused') { state = prevState; document.getElementById('pauseBtn').textContent = 'II Pause'; }
+  if (state === 'race' || state === 'countdown') { prevState = state; state = 'paused'; document.getElementById('pauseBtn').textContent = '▶'; }
+  else if (state === 'paused') { state = prevState; document.getElementById('pauseBtn').textContent = 'II'; }
 }
 function toggleSound() {
   soundOn = !soundOn;
-  document.getElementById('soundBtn').textContent = soundOn ? 'Sound: On' : 'Sound: Off';
+  var b = document.getElementById('soundBtn');
+  if (soundOn) b.classList.remove('off'); else b.classList.add('off');
 }
 
 /* ---------- race control ---------- */
@@ -408,7 +411,7 @@ function startRace() {
     }
   document.getElementById('startScreen').style.display = 'none';
   document.getElementById('finishScreen').style.display = 'none';
-  document.getElementById('pauseBtn').textContent = 'II Pause';
+  document.getElementById('pauseBtn').textContent = 'II';
   state = 'countdown'; countdownT = 3.6; countdownShown = '';
 }
 function finishRace() {
@@ -466,7 +469,7 @@ function update(dt) {
   steerVisual += ((steer) - steerVisual) * Math.min(1, dt * 8);
   playerX += dx * steer * 1.0;
   playerX -= dx * speedPercent * playerSegment.curve * centrifugal;
-  var gas = keys.gas || touch.gas, brake = keys.brake || touch.brake;
+  var gas = keys.gas || autoGas, brake = keys.brake || touch.brake;
   if (gas) speed += accel * dt;
   else if (brake) speed += braking * dt;
   else speed += decel * dt;
@@ -809,6 +812,7 @@ if ('ontouchstart' in window && (typeof window.DeviceMotionEvent !== 'undefined'
   tiltCalibratePending = true;
   document.getElementById('tiltHint').innerHTML = '<b>Tilt:</b> rotate your phone to steer &nbsp;·&nbsp; ';
 }
+if ('ontouchstart' in window) autoGas = true;
 updateTiltBtn();
 var bl = '';
 if (bestTime) bl += 'Best total: <b>' + fmtTime(parseFloat(bestTime)) + '</b>';
