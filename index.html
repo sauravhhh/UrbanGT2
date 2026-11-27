@@ -95,6 +95,7 @@
       <span id="tiltHint"></span>
       <span id="bestLine"></span>
     </div>
+    <div style="margin-top:10px;font-size:11px;opacity:.55;">Sound effects by vinish.dev (CC BY 4.0)</div>
   </div>
 
   <div class="screen" id="finishScreen" style="display:none">
@@ -179,7 +180,7 @@ var bestTime = null;
 try { bestTime = localStorage.getItem('urbangt2-best'); } catch (e) {}
 var bestCoins = 0;
 try { bestCoins = parseInt(localStorage.getItem('urbangt2-coins') || '0', 10) || 0; } catch (e) {}
-var soundOn = true, audioCtx = null, engineOsc1 = null, engineOsc2 = null, engineGain = null;
+var soundOn = true, audioCtx = null, engineSrc = null, engineGain = null, sfx = {};
 
 /* ---------- track building ---------- */
 function lastY() { return segments.length === 0 ? 0 : segments[segments.length - 1].p2.world.y; }
@@ -253,16 +254,37 @@ function resetOpponents() {
 
 /* ---------- audio (tiny engine hum) ---------- */
 function initAudio() {
-  if (audioCtx) return;
+  if (audioCtx) { if (audioCtx.state === 'suspended') audioCtx.resume(); return; }
   try {
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
     engineGain = audioCtx.createGain(); engineGain.gain.value = 0; engineGain.connect(audioCtx.destination);
-    engineOsc1 = audioCtx.createOscillator(); engineOsc1.type = 'sawtooth'; engineOsc1.frequency.value = 60;
-    engineOsc2 = audioCtx.createOscillator(); engineOsc2.type = 'square'; engineOsc2.frequency.value = 90;
-    var g2 = audioCtx.createGain(); g2.gain.value = 0.4;
-    engineOsc1.connect(engineGain); engineOsc2.connect(g2); g2.connect(engineGain);
-    engineOsc1.start(); engineOsc2.start();
+    loadSound('engine', 'sounds/engine.ogg', true);
+    loadSound('coin', 'sounds/coin.ogg');
+    loadSound('crash', 'sounds/crash.ogg');
+    loadSound('nitro', 'sounds/nitro.ogg');
+    loadSound('start', 'sounds/start.ogg');
   } catch (e) { audioCtx = null; }
+}
+function loadSound(name, url, loop) {
+  fetch(url).then(function (r) { return r.arrayBuffer(); }).then(function (buf) {
+    return audioCtx.decodeAudioData(buf);
+  }).then(function (decoded) {
+    sfx[name] = decoded;
+    if (name === 'engine') {
+      engineSrc = audioCtx.createBufferSource();
+      engineSrc.buffer = decoded; engineSrc.loop = true;
+      engineSrc.connect(engineGain); engineSrc.start();
+    }
+  }).catch(function () {});
+}
+function playSfx(name, vol) {
+  if (!audioCtx || !soundOn || !sfx[name]) return;
+  try {
+    var src = audioCtx.createBufferSource(); src.buffer = sfx[name];
+    var g = audioCtx.createGain(); g.gain.value = vol || 0.5;
+    src.connect(g); g.connect(audioCtx.destination); src.start();
+  } catch (e) {}
 }
 function beep(freq, dur) {
   if (!audioCtx || !soundOn) return;
@@ -278,9 +300,8 @@ function beep(freq, dur) {
 function updateAudio() {
   if (!audioCtx || !engineGain) return;
   var on = soundOn && (state === 'race' || state === 'countdown') && speed > 200;
-  engineGain.gain.value = on ? 0.05 + (speed / maxSpeed) * 0.05 : 0;
-  var f = 55 + (speed / maxSpeed) * 165 + (nitroActive ? 40 : 0);
-  engineOsc1.frequency.value = f; engineOsc2.frequency.value = f * 1.5;
+  engineGain.gain.value = on ? 0.06 + (speed / maxSpeed) * 0.08 : 0;
+  if (engineSrc) engineSrc.playbackRate.value = 0.7 + (speed / maxSpeed) * 0.9 + (nitroActive ? 0.25 : 0);
 }
 
 /* ---------- tilt steering (rotate the phone to steer) ---------- */
@@ -455,7 +476,7 @@ function update(dt) {
     countdownT -= dt;
     var n = Math.ceil(countdownT);
     var label = countdownT > 0.6 ? String(n) : 'GO!';
-    if (label !== countdownShown) { countdownShown = label; beep(label === 'GO!' ? 880 : 440, 0.18); }
+    if (label !== countdownShown) { countdownShown = label; if (label === 'GO!') playSfx('start', 0.7); else beep(440, 0.18); }
     if (countdownT <= 0) { state = 'race'; countdownShown = ''; }
     return;
   }
@@ -470,8 +491,8 @@ function update(dt) {
   playerX += dx * steer * 1.0;
   playerX -= dx * speedPercent * playerSegment.curve * centrifugal;
   var gas = keys.gas || autoGas, brake = keys.brake || touch.brake;
-  if (gas) speed += accel * dt;
-  else if (brake) speed += braking * dt;
+  if (brake) speed += braking * dt;
+  else if (gas) speed += accel * dt;
   else speed += decel * dt;
   var wantNitro = (keys.nitro || touch.nitro) && nitro > 1;
   nitroActive = wantNitro;
@@ -512,7 +533,7 @@ function update(dt) {
       speed = Math.max(0, speed * 0.55);
       playerX += (playerX < o.offset ? -0.35 : 0.35);
       o.offset += (o.offset < playerX ? -0.3 : 0.3);
-      beep(120, 0.2);
+      playSfx('crash', 0.6);
     }
   }
   // nitro canisters + gold coins
@@ -521,9 +542,9 @@ function update(dt) {
     var sp = seg.sprites[j];
     if (sp.type === 'nitro' && !sp.taken && Math.abs(sp.offset - playerX) < 0.45) {
       sp.taken = true; nitro = Math.min(100, nitro + 30);
-      flashMsg = '+NITRO'; flashT = 1.0; beep(990, 0.12);
+      flashMsg = '+NITRO'; flashT = 1.0; playSfx('nitro', 0.6);
     } else if (sp.type === 'coin' && !sp.taken && Math.abs(sp.offset - playerX) < 0.4) {
-      sp.taken = true; coins++; coinPopT = 0.18; beep(1320, 0.1);
+      sp.taken = true; coins++; coinPopT = 0.18; playSfx('coin', 0.5);
     }
   }
   if (coinPopT > 0) coinPopT -= dt;
